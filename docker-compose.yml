@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  game:
+    build: .
+    container_name: show_da_programacao
+    environment:
+      - DISPLAY=${DISPLAY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - .:/app
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    devices:
+      - /dev/dri:/dev/dri
+    network_mode: host
+    stdin_open: true
+    tty: true

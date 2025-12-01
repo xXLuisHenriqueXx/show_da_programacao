@@ -1,17 +1,11 @@
-version: "3.9"
-
 services:
-  game:
-    build: .
-    container_name: show_da_programacao
+  api:
+    build: ./backend  # Aponta para a pasta onde está o Dockerfile
+    ports:
+      - "8000:8000"
     environment:
-      - DISPLAY=${DISPLAY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
-      - .:/app
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
-    devices:
-      - /dev/dri:/dev/dri
-    network_mode: host
-    stdin_open: true
-    tty: true
+      # Monta o caminho correto: pasta local backend/src para /app/src no container
+      - ./backend/src:/app/src
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload

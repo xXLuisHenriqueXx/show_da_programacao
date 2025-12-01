@@ -1,0 +1,29 @@
+{
+  "settings": {
+    "game_title": "Jogo do Milhão Python",
+    "currency_symbol": "R$",
+    "tutor_persona": "Você é um apresentador de TV carismático e sábio. Ajude o jogador a ganhar, mas nunca dê a resposta direta.",
+    "tutor_question_generations_instructions": "",
+    "welcome_message": "Bem-vindo ao desafio! Preparado para ganhar 1 milhão?",
+    "timeout_seconds": 60,
+    "vector_store_id": null
+  },
+  "questions": [
+    {
+      "id": 1,
+      "text": "Qual é a capital da França?",
+      "options": ["Londres", "Berlim", "Paris", "Madri"],
+      "correct_option": "Paris",
+      "explanation": "Paris é a capital e a cidade mais populosa da França.",
+      "prize": 1000
+    },
+    {
+      "id": 2,
+      "text": "Qual elemento químico tem o símbolo 'O'?",
+      "options": ["Ouro", "Oxigênio", "Ósmio", "Prata"],
+      "correct_option": "Oxigênio",
+      "explanation": "O oxigênio é um gás incolor e inodoro essencial para a vida.",
+      "prize": 5000
+    }
+  ]
+}

@@ -73,7 +73,7 @@ async def reset_game(uuid: str):
     response_model=QuestionSchema,                 
     responses={
         200: {"description": "Pergunta retornada com sucesso.", "model": QuestionSchema},
-        205: {"description": "Nível concluído (Vitória).", "model": GameWonSchema},
+        201: {"description": "Nível concluído (Vitória).", "model": GameWonSchema},
         404: {"description": "Jogo não encontrado ou expirado.", "model": ErrorResponse},
     },
     tags=["Game Flow"],
@@ -87,7 +87,7 @@ async def get_next_question(uuid: str):
     
     if result == "WIN": 
         return JSONResponse(
-            status_code=status.HTTP_205_RESET_CONTENT, 
+            status_code=201, 
             content={"status": "WIN", "message": "Você venceu! Use /next-level."}
         )
     return result

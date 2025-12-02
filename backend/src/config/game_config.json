@@ -6,6 +6,7 @@
     "tutor_question_generations_instructions": "",
     "welcome_message": "Bem-vindo ao desafio! Preparado para ganhar 1 milhão?",
     "timeout_seconds": 60,
+    "generated_questions_quantity": 4,
     "vector_store_id": null
   },
   "questions": [

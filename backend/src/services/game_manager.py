@@ -21,6 +21,7 @@ class GameManager:
             "current_question_index": 0,
             "accumulated_prize": 0,
             "status": "active",
+            "generation_status": "idle", 
             "generated_questions": [],
             "history": [],
             "chat_history": [] 
@@ -29,6 +30,20 @@ class GameManager:
 
     def get_game(self, game_id: str) -> Optional[dict]:
         return self.games.get(game_id)
+
+    def get_generation_status(self, game_id: str) -> dict:
+        game = self.get_game(game_id)
+        if not game:
+            return {"status": "error", "message": "Jogo não encontrado"}
+        return {
+            "status": game.get("generation_status", "idle"),
+            "message": "Aguardando..." if game.get("generation_status") == "generating" else "Concluído"
+        }
+
+    def set_generation_status(self, game_id: str, status: str):
+        game = self.get_game(game_id)
+        if game:
+            game["generation_status"] = status
 
     def get_current_question(self, game_id: str):
         game = self.get_game(game_id)
@@ -89,38 +104,84 @@ class GameManager:
             game['status'] = 'lost'
             return False
 
-    def generate_next_level(self, game_id: str, ai_client: LLMClientInterface):
+    def background_generate_level(self, game_id: str, ai_client: LLMClientInterface):
+        """Executada em background task com retries, validação e quantidade dinâmica."""
         game = self.get_game(game_id)
-        if not game: return False
+        if not game: return
 
-        system_prompt = self.settings.get('tutor_question_generations_instructions', "")
-        
-        system_prompt += (
-            "Você é um gerador de API de quiz. "
-            "Gere 4 novas perguntas difíceis baseada no contexto. "
-            "A saída DEVE ser estritamente um JSON válido com a estrutura: "
-            "{'questions': [{'id': 'gen_1', 'text': '...', 'options': ['Alternativa A','Alternativa B','Alternativa C','Alternativa D'], "
-            "'correct_option': 'Alternativa B', 'explanation': '...', 'prize': 10000}]}"
+        qty_questions = self.settings.get("generated_questions_quantity", 4) 
+
+        history_str = json.dumps(game.get('history', []), ensure_ascii=False)
+        chat_context = [
+            {"role": m["role"], "content": m["content"]} 
+            for m in game.get('chat_history', []) 
+            if m.get('role') != 'system'
+        ]
+        chat_str = json.dumps(chat_context, ensure_ascii=False)
+
+        # 3. Prompt Dinâmico
+        base_instruction = self.settings.get('tutor_question_generations_instructions', "")
+        system_prompt = (
+            f"{base_instruction}\n\n"
+            "ATUAÇÃO: Você é um Motor de Geração de Conteúdo Adaptativo para ensino de programação.\n"
+            f"TAREFA: Gere um novo nível contendo EXATAMENTE {qty_questions} perguntas de múltipla escolha.\n\n"
+            "CONTEXTO DO JOGADOR:\n"
+            f"- Histórico de Jogo: {history_str}\n"
+            f"- Conversas com Tutor: {chat_str}\n\n"
+            "DIRETRIZES:\n"
+            "1. Baseie-se nas dúvidas expressas no chat.\n"
+            "2. Se houve erros, reforce os conceitos.\n"
+            "3. Se houve acertos fáceis, aumente a dificuldade.\n"
+            "4. Retorne APENAS JSON válido.\n\n"
+            "FORMATO JSON OBRIGATÓRIO:\n"
+            "{\n"
+            "  \"questions\": [\n"
+            "    {\n"
+            "      \"id\": \"gen_<uuid>\",\n"
+            "      \"text\": \"...\",\n"
+            "      \"options\": [\"A\", \"B\", \"C\", \"D\"],\n"
+            "      \"correct_option\": \"...\",\n"
+            "      \"explanation\": \"...\",\n"
+            "      \"prize\": 10000\n"
+            "    }\n"
+            "  ]\n"
+            "}"
         )
-        
-        try:
-            json_str = ai_client.generate_structured_content(
-                system_prompt=system_prompt, 
-                user_prompt="Gere o próximo nível.",
-                vector_store_id=self.vector_store_id
-            )
-            
-            clean_json = json_str.replace("```json", "").replace("```", "").strip()
-            data = json.loads(clean_json)
-            
-            game['generated_questions'] = data.get('questions', [])
-            game['mode'] = 'generated'
-            game['current_question_index'] = 0
-            game['status'] = 'active'
-            return True
-        except Exception as e:
-            print(f"Erro ao gerar perguntas: {e}")
-            return False
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                json_str = ai_client.generate_structured_content(
+                    system_prompt=system_prompt,
+                    user_prompt=f"Gere o próximo nível com {qty_questions} questões (Tentativa {attempt+1}).",
+                    vector_store_id=self.vector_store_id
+                )
+
+                clean_json = json_str.replace("```json", "").replace("```", "").strip()
+                data = json.loads(clean_json)
+
+                if "questions" not in data or not isinstance(data["questions"], list):
+                    raise ValueError("JSON inválido: chave 'questions' ausente ou mal formatada.")
+                
+                if len(data["questions"]) != qty_questions:
+                    raise ValueError(f"Quantidade incorreta: esperava {qty_questions}, recebeu {len(data['questions'])}")
+
+                first_q = data["questions"][0]
+                required_keys = ["text", "options", "correct_option", "explanation", "prize"]
+                if not all(k in first_q for k in required_keys):
+                     raise ValueError("JSON inválido: campos obrigatórios da pergunta ausentes.")
+
+                game['generated_questions'] = data['questions']
+                game['mode'] = 'generated'
+                game['current_question_index'] = 0
+                game['status'] = 'active'
+                game['generation_status'] = 'completed'
+                return 
+
+            except (json.JSONDecodeError, ValueError, Exception) as e:
+                print(f"Tentativa {attempt+1} falhou: {e}")
+                if attempt == max_retries - 1:
+                    game['generation_status'] = 'error'
 
     def init_tutor_context(self, game_id: str):
         game = self.get_game(game_id)

@@ -1,12 +1,13 @@
 import json
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status, BackgroundTasks
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from src.services.game_manager import GameManager
 from src.services.openai_service import OpenAIClient
 from src.models import (
     StartResponse, AnswerRequest, AnswerResponse, 
-    ChatCreationResponse, QuestionSchema, WebSocketProtocolDocs
+    ChatCreationResponse, QuestionSchema, WebSocketProtocolDocs, 
+    GameWonSchema, GenerationStatusResponse
 )
 
 tags_metadata = [
@@ -14,7 +15,7 @@ tags_metadata = [
     {"name": "Tutor AI", "description": "Chat WebSocket e Geração de Conteúdo."},
 ]
 
-app = FastAPI(title="Jogo do Milhão AI", version="2.6.0", openapi_tags=tags_metadata)
+app = FastAPI(title="Jogo do Milhão AI", version="2.7.0", openapi_tags=tags_metadata)
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,11 +34,23 @@ async def start_game():
     welcome = game_manager.settings.get("welcome_message", "Jogo iniciado.")
     return {"uuid": uuid, "message": welcome}
 
-@app.get("/question/{uuid}", response_model=QuestionSchema | dict, tags=["Game Flow"])
+@app.get(
+    "/question/{uuid}",
+    response_model=QuestionSchema,                 
+    responses={
+        201: {"model": GameWonSchema },
+        404: {"model": dict},
+    },
+    tags=["Game Flow"]
+)
 async def get_next_question(uuid: str):
     result = game_manager.get_current_question(uuid)
     if result is None: raise HTTPException(status_code=404, detail="Jogo não encontrado.")
-    if result == "WIN": return {"status": "WIN", "message": "Você venceu! Use /next-level."}
+    if result == "WIN": 
+        return JSONResponse(
+            status_code=205, 
+            content={"status": "WIN", "message": "Você venceu! Use /next-level."}
+        )
     return result
 
 @app.post("/answer/{uuid}", response_model=AnswerResponse, tags=["Game Flow"])
@@ -61,16 +74,30 @@ async def answer_question(uuid: str, payload: AnswerRequest):
     }
     return JSONResponse(status_code=200 if is_correct else 406, content=response_data)
 
-@app.post("/next-level/{uuid}", tags=["Game Flow"])
-async def generate_next_level(uuid: str):
+@app.post("/next-level/{uuid}", status_code=202, tags=["Game Flow"])
+async def generate_next_level(uuid: str, background_tasks: BackgroundTasks):
+    """
+    Inicia a geração de perguntas em background e retorna 202 Accepted imediatamente.
+    O frontend deve fazer polling na rota /next-level/{uuid}/status.
+    """
+    
     game = game_manager.get_game(uuid)
     if not game or game['status'] != 'won':
         raise HTTPException(status_code=400, detail="Vença o nível atual primeiro.")
     
-    success = game_manager.generate_next_level(uuid, ai_client)
+    game_manager.set_generation_status(uuid, "generating")
+    background_tasks.add_task(game_manager.background_generate_level, uuid, ai_client)
     
-    if not success: raise HTTPException(status_code=500, detail="Erro na IA.")
-    return {"message": "Novo nível gerado!"}
+    return {"message": "Geração iniciada. Verifique o status."}
+
+@app.get("/next-level/{uuid}/status", response_model=GenerationStatusResponse, tags=["Game Flow"])
+async def check_generation_status(uuid: str):
+    """
+    Verifica o status da geração de perguntas (polling).
+    Retorna: 'idle', 'generating', 'completed', ou 'error'.
+    """
+    status_data = game_manager.get_generation_status(uuid)
+    return status_data
 
 @app.post("/chat/{uuid}/prepare", response_model=ChatCreationResponse, tags=["Tutor AI"])
 async def prepare_tutor(uuid: str):
@@ -83,19 +110,6 @@ async def prepare_tutor(uuid: str):
 async def get_websocket_protocol(uuid: str):
     return {
         "url": f"ws://SEU_HOST:8000/ws/chat/{uuid}",
-        "protocol": "JSON-Only",
-        "client_sends": {"client_message": "Texto do usuário"},
-        "server_sends_history": {
-            "type": "history", 
-            "content": [{"role": "user", "content": "..."}]
-        },
-        "server_sends_stream": {"response_stream": "chunk"},
-        "server_sends_control": {"type": "control", "content": "[DONE]"},
-        "server_sends_redundancy": {
-            "type": "full_text", 
-            "content": "Texto completo..."
-        },
-        "possible_errors": {"type": "error", "content": "Erro..."}
     }
 
 @app.websocket("/ws/chat/{uuid}")

@@ -12,6 +12,14 @@ class QuestionSchema(BaseModel):
     prize: float
     currency: str
 
+class GameWonSchema(BaseModel):
+    status: str
+    message: str
+
+class GenerationStatusResponse(BaseModel):
+    status: str = Field(..., description="Estados: 'idle', 'generating', 'completed', 'error'")
+    message: str
+
 class AnswerRequest(BaseModel):
     option_index: int = Field(..., ge=0, le=3, description="Índice da opção escolhida (0=A, 1=B, 2=C, 3=D)")
 

@@ -31,6 +31,26 @@ class GameManager:
     def get_game(self, game_id: str) -> Optional[dict]:
         return self.games.get(game_id)
 
+    def reset_game(self, game_id: str) -> bool:
+        """Reinicia o nível atual mantendo as perguntas mas zerando o progresso."""
+        game = self.get_game(game_id)
+        if not game: return False
+
+        # Reinicia estado do jogo
+        game['current_question_index'] = 0
+        game['accumulated_prize'] = 0
+        game['status'] = 'active'
+        game['history'] = [] # Limpa histórico de acertos/erros desta rodada
+        
+        # Reinicia o tutor e avisa sobre o reset
+        self.init_tutor_context(game_id)
+        
+        # Adiciona contexto extra para o tutor saber que é uma nova tentativa
+        retry_context = "SISTEMA: O jogador optou por REINICIAR (Reset) este nível. Ele está tentando novamente as mesmas perguntas. Seja encorajador e considere que ele pode já ter visto essas questões antes."
+        game['chat_history'].append({"role": "system", "content": retry_context})
+        
+        return True
+
     def get_generation_status(self, game_id: str) -> dict:
         game = self.get_game(game_id)
         if not game:

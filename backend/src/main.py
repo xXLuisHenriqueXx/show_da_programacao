@@ -7,15 +7,21 @@ from src.services.openai_service import OpenAIClient
 from src.models import (
     StartResponse, AnswerRequest, AnswerResponse, 
     ChatCreationResponse, QuestionSchema, WebSocketProtocolDocs, 
-    GameWonSchema, GenerationStatusResponse
+    GameWonSchema, GenerationStatusResponse, NextLevelAccepted,
+    ErrorResponse, ResetResponse
 )
 
 tags_metadata = [
-    {"name": "Game Flow", "description": "Controle do jogo e fluxo de perguntas."},
-    {"name": "Tutor AI", "description": "Chat WebSocket e Geração de Conteúdo."},
+    {"name": "Game Flow", "description": "Gerenciamento de sessão, perguntas e respostas."},
+    {"name": "Tutor AI", "description": "Interação em tempo real com o assistente inteligente."},
 ]
 
-app = FastAPI(title="Jogo do Milhão AI", version="2.7.0", openapi_tags=tags_metadata)
+app = FastAPI(
+    title="Jogo do Milhão AI", 
+    version="2.9.0", 
+    description="API para Quiz Game com suporte a IA Generativa e Tutoria em Tempo Real.",
+    openapi_tags=tags_metadata
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,32 +34,76 @@ app.add_middleware(
 game_manager = GameManager()
 ai_client = OpenAIClient()
 
-@app.post("/start", response_model=StartResponse, tags=["Game Flow"])
+@app.post(
+    "/start", 
+    response_model=StartResponse, 
+    tags=["Game Flow"],
+    summary="Inicia uma nova sessão",
+    description="Cria uma nova instância de jogo, gera um UUID único e reinicia o estado do jogador."
+)
 async def start_game():
     uuid = game_manager.create_game()
     welcome = game_manager.settings.get("welcome_message", "Jogo iniciado.")
     return {"uuid": uuid, "message": welcome}
 
+@app.post(
+    "/reset/{uuid}",
+    response_model=ResetResponse,
+    responses={
+        200: {"description": "Nível reiniciado com sucesso.", "model": ResetResponse},
+        404: {"description": "Jogo não encontrado.", "model": ErrorResponse}
+    },
+    tags=["Game Flow"],
+    summary="Reinicia o nível atual",
+    description="Reseta o progresso do jogador (índice e prêmio) mas MANTÉM as perguntas atuais. Use isso para 'Tentar Novamente'."
+)
+async def reset_game(uuid: str):
+    success = game_manager.reset_game(uuid)
+    if not success:
+        raise HTTPException(status_code=404, detail="Jogo não encontrado.")
+    
+    # Retorna o ID da primeira pergunta para o front já se situar
+    current_q = game_manager.get_current_question(uuid)
+    return {
+        "message": "Nível reiniciado. Boa sorte desta vez!",
+        "current_question_id": current_q['id']
+    }
+
 @app.get(
     "/question/{uuid}",
     response_model=QuestionSchema,                 
     responses={
-        201: {"model": GameWonSchema },
-        404: {"model": dict},
+        200: {"description": "Pergunta retornada com sucesso.", "model": QuestionSchema},
+        205: {"description": "Nível concluído (Vitória).", "model": GameWonSchema},
+        404: {"description": "Jogo não encontrado ou expirado.", "model": ErrorResponse},
     },
-    tags=["Game Flow"]
+    tags=["Game Flow"],
+    summary="Obtém a pergunta atual"
 )
 async def get_next_question(uuid: str):
     result = game_manager.get_current_question(uuid)
-    if result is None: raise HTTPException(status_code=404, detail="Jogo não encontrado.")
+    
+    if result is None: 
+        raise HTTPException(status_code=404, detail="Jogo não encontrado.")
+    
     if result == "WIN": 
         return JSONResponse(
-            status_code=205, 
+            status_code=status.HTTP_205_RESET_CONTENT, 
             content={"status": "WIN", "message": "Você venceu! Use /next-level."}
         )
     return result
 
-@app.post("/answer/{uuid}", response_model=AnswerResponse, tags=["Game Flow"])
+@app.post(
+    "/answer/{uuid}", 
+    response_model=AnswerResponse, 
+    responses={
+        200: {"description": "Resposta Correta.", "model": AnswerResponse},
+        406: {"description": "Resposta Errada (Game Over).", "model": AnswerResponse},
+        404: {"description": "Jogo não encontrado.", "model": ErrorResponse}
+    },
+    tags=["Game Flow"],
+    summary="Envia uma resposta"
+)
 async def answer_question(uuid: str, payload: AnswerRequest):
     game = game_manager.get_game(uuid)
     if not game: raise HTTPException(status_code=404, detail="Jogo não encontrado.")
@@ -72,17 +122,31 @@ async def answer_question(uuid: str, payload: AnswerRequest):
         "explanation": explanation,
         "game_status": game['status']
     }
-    return JSONResponse(status_code=200 if is_correct else 406, content=response_data)
+    
+    status_code = status.HTTP_200_OK if is_correct else status.HTTP_406_NOT_ACCEPTABLE
+    return JSONResponse(status_code=status_code, content=response_data)
 
-@app.post("/next-level/{uuid}", status_code=202, tags=["Game Flow"])
+@app.post(
+    "/next-level/{uuid}", 
+    status_code=202, 
+    response_model=NextLevelAccepted,
+    responses={
+        202: {"description": "Geração iniciada em background.", "model": NextLevelAccepted},
+        400: {"description": "Não permitido (Jogador não venceu o nível atual).", "model": ErrorResponse},
+        404: {"description": "Jogo não encontrado.", "model": ErrorResponse}
+    },
+    tags=["Game Flow"],
+    summary="Solicita geração de novas perguntas"
+)
 async def generate_next_level(uuid: str, background_tasks: BackgroundTasks):
     """
-    Inicia a geração de perguntas em background e retorna 202 Accepted imediatamente.
-    O frontend deve fazer polling na rota /next-level/{uuid}/status.
+    Aciona a IA para criar um novo set de perguntas.
+    Retorna imediatamente (Assíncrono). O frontend deve consultar `/status`.
     """
-    
     game = game_manager.get_game(uuid)
-    if not game or game['status'] != 'won':
+    if not game: raise HTTPException(status_code=404, detail="Jogo não encontrado.")
+    
+    if game['status'] != 'won':
         raise HTTPException(status_code=400, detail="Vença o nível atual primeiro.")
     
     game_manager.set_generation_status(uuid, "generating")
@@ -90,26 +154,53 @@ async def generate_next_level(uuid: str, background_tasks: BackgroundTasks):
     
     return {"message": "Geração iniciada. Verifique o status."}
 
-@app.get("/next-level/{uuid}/status", response_model=GenerationStatusResponse, tags=["Game Flow"])
+@app.get(
+    "/next-level/{uuid}/status", 
+    response_model=GenerationStatusResponse, 
+    tags=["Game Flow"],
+    summary="Verifica status da geração"
+)
 async def check_generation_status(uuid: str):
-    """
-    Verifica o status da geração de perguntas (polling).
-    Retorna: 'idle', 'generating', 'completed', ou 'error'.
-    """
     status_data = game_manager.get_generation_status(uuid)
     return status_data
 
-@app.post("/chat/{uuid}/prepare", response_model=ChatCreationResponse, tags=["Tutor AI"])
+@app.post(
+    "/chat/{uuid}/prepare", 
+    response_model=ChatCreationResponse, 
+    responses={
+        200: {"description": "Contexto carregado com sucesso.", "model": ChatCreationResponse},
+        404: {"description": "Jogo não encontrado.", "model": ErrorResponse}
+    },
+    tags=["Tutor AI"],
+    summary="Inicializa contexto do Tutor"
+)
 async def prepare_tutor(uuid: str):
+    """
+    Deve ser chamado ANTES de conectar ao WebSocket.
+    Prepara a 'persona' da IA com base no estado atual (Ganhando, Perdendo, Jogando) e histórico.
+    """
     game = game_manager.get_game(uuid)
     if not game: raise HTTPException(status_code=404, detail="Jogo não encontrado.")
+    
     game_manager.init_tutor_context(uuid)
     return {"message": "Tutor pronto.", "context_mode": game['status']}
 
-@app.get("/ws/chat/{uuid}/docs", response_model=WebSocketProtocolDocs, tags=["Tutor AI"])
+@app.get(
+    "/ws/chat/{uuid}/docs", 
+    response_model=WebSocketProtocolDocs, 
+    tags=["Tutor AI"],
+    summary="Documentação do Protocolo WebSocket"
+)
 async def get_websocket_protocol(uuid: str):
     return {
         "url": f"ws://SEU_HOST:8000/ws/chat/{uuid}",
+        "protocol": "JSON-Only",
+        "client_sends": {"client_message": "Texto do usuário"},
+        "server_sends_history": {"type": "history", "content": []},
+        "server_sends_stream": {"response_stream": "..."},
+        "server_sends_control": {"type": "control", "content": "[DONE]"},
+        "server_sends_redundancy": {"type": "full_text", "content": "..."},
+        "possible_errors": {"type": "error", "content": "..."}
     }
 
 @app.websocket("/ws/chat/{uuid}")
@@ -128,12 +219,10 @@ async def websocket_endpoint(websocket: WebSocket, uuid: str):
         return
 
     visible_history = [msg for msg in game['chat_history'] if msg['role'] != 'system']
-    
-    history_payload = json.dumps({
+    await websocket.send_text(json.dumps({
         "type": "history",
         "content": visible_history
-    })
-    await websocket.send_text(history_payload)
+    }))
 
     vector_id = game_manager.vector_store_id
 
@@ -156,17 +245,13 @@ async def websocket_endpoint(websocket: WebSocket, uuid: str):
                 vector_store_id=vector_id
             ):
                 full_response += chunk
-                response_payload = json.dumps({"response_stream": chunk})
-                await websocket.send_text(response_payload) 
+                await websocket.send_text(json.dumps({"response_stream": chunk})) 
             
-            control_payload = json.dumps({"type": "control", "content": "[DONE]"})
-            await websocket.send_text(control_payload)
-            
-            final_message_payload = json.dumps({
+            await websocket.send_text(json.dumps({"type": "control", "content": "[DONE]"}))
+            await websocket.send_text(json.dumps({
                 "type": "full_text", 
                 "content": full_response
-            })
-            await websocket.send_text(final_message_payload)
+            }))
             
             game['chat_history'].append({"role": "assistant", "content": full_response})
             

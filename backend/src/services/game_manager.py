@@ -119,7 +119,6 @@ class GameManager:
         ]
         chat_str = json.dumps(chat_context, ensure_ascii=False)
 
-        # 3. Prompt Dinâmico
         base_instruction = self.settings.get('tutor_question_generations_instructions', "")
         system_prompt = (
             f"{base_instruction}\n\n"
@@ -196,6 +195,10 @@ class GameManager:
         elif status == 'won':
             context = f"{persona} O jogador VENCEU.\nHistórico: {history_str}\nMissão: Parabenizar."
         else:
-            context = f"{persona} O jogo está em andamento. Ajude com dúvidas."
+            context = (
+                f"{persona} O jogo está em andamento.\n"
+                f"Histórico de jogadas até agora: {history_str}\n"
+                "Missão: Ajude com dúvidas sobre a pergunta atual ou as anteriores."
+            )
 
         game['chat_history'] = [{"role": "system", "content": context}]

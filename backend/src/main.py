@@ -1,6 +1,7 @@
 import json
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from src.services.game_manager import GameManager
 from src.services.openai_service import OpenAIClient
 from src.models import (
@@ -14,6 +15,14 @@ tags_metadata = [
 ]
 
 app = FastAPI(title="Jogo do Milhão AI", version="2.6.0", openapi_tags=tags_metadata)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 game_manager = GameManager()
 ai_client = OpenAIClient()

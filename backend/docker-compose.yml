@@ -1,11 +1,10 @@
 services:
   api:
-    build: ./backend  # Aponta para a pasta onde está o Dockerfile
+    build: ./
     ports:
       - "8000:8000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
-      # Monta o caminho correto: pasta local backend/src para /app/src no container
-      - ./backend/src:/app/src
+      - ./src:/app/src
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload

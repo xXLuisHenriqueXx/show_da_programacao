@@ -97,10 +97,10 @@ class GameManager:
         
         system_prompt += (
             "Você é um gerador de API de quiz. "
-            "Gere 3 novas perguntas difíceis. "
+            "Gere 4 novas perguntas difíceis baseada no contexto. "
             "A saída DEVE ser estritamente um JSON válido com a estrutura: "
-            "{'questions': [{'id': 'gen_1', 'text': '...', 'options': ['A','B','C','D'], "
-            "'correct_option': 'A', 'explanation': '...', 'prize': 10000}]}"
+            "{'questions': [{'id': 'gen_1', 'text': '...', 'options': ['Alternativa A','Alternativa B','Alternativa C','Alternativa D'], "
+            "'correct_option': 'Alternativa B', 'explanation': '...', 'prize': 10000}]}"
         )
         
         try:

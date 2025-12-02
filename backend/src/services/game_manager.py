@@ -40,12 +40,15 @@ class GameManager:
         game['current_question_index'] = 0
         game['accumulated_prize'] = 0
         game['status'] = 'active'
-        game['history'] = [] # Limpa histórico de acertos/erros desta rodada
+        game['history'] = [] 
         
-        # Reinicia o tutor e avisa sobre o reset
+        # Limpa o chat explicitamente (já que é um reset total)
+        game['chat_history'] = []
+        
+        # Inicializa com o novo contexto
         self.init_tutor_context(game_id)
         
-        # Adiciona contexto extra para o tutor saber que é uma nova tentativa
+        # Adiciona aviso de reset
         retry_context = "SISTEMA: O jogador optou por REINICIAR (Reset) este nível. Ele está tentando novamente as mesmas perguntas. Seja encorajador e considere que ele pode já ter visto essas questões antes."
         game['chat_history'].append({"role": "system", "content": retry_context})
         
@@ -125,7 +128,6 @@ class GameManager:
             return False
 
     def background_generate_level(self, game_id: str, ai_client: LLMClientInterface):
-        """Executada em background task com retries, validação e quantidade dinâmica."""
         game = self.get_game(game_id)
         if not game: return
 
@@ -203,6 +205,10 @@ class GameManager:
                     game['generation_status'] = 'error'
 
     def init_tutor_context(self, game_id: str):
+        """
+        Prepara ou ATUALIZA o contexto do tutor sem duplicar informações.
+        Se já existir histórico, atualiza apenas a mensagem de sistema (index 0).
+        """
         game = self.get_game(game_id)
         if not game: return
 
@@ -221,4 +227,12 @@ class GameManager:
                 "Missão: Ajude com dúvidas sobre a pergunta atual ou as anteriores."
             )
 
-        game['chat_history'] = [{"role": "system", "content": context}]
+        system_message = {"role": "system", "content": context}
+
+        if not game['chat_history']:
+            game['chat_history'] = [system_message]
+        else:
+            if game['chat_history'][0]['role'] == 'system':
+                game['chat_history'][0] = system_message
+            else:
+                game['chat_history'].insert(0, system_message)

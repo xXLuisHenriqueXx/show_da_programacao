@@ -33,6 +33,14 @@ class GenerationStatusResponse(BaseModel):
 class AnswerRequest(BaseModel):
     option_index: int = Field(..., ge=0, le=3, description="Índice da opção escolhida (0=A, 1=B, 2=C, 3=D).")
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "option_index": 2
+            }
+        }
+    }
+
 class AnswerResponse(BaseModel):
     result: str = Field(..., description="Mensagem curta de feedback (Correto/Errado).")
     correct: bool = Field(..., description="Booleano indicando se a resposta foi aceita.")
@@ -40,12 +48,16 @@ class AnswerResponse(BaseModel):
     explanation: Optional[str] = Field(None, description="Explicação técnica da resposta (retornado mesmo se errar, para aprendizado).")
     game_status: str = Field(..., description="Estado atual do jogo: 'active' (continua), 'won' (venceu bloco), 'lost' (fim de jogo).")
 
-class ChatCreationResponse(BaseModel):
-    message: str = Field(..., description="Confirmação de inicialização.")
-    context_mode: str = Field(..., description="Indica qual contexto foi carregado no tutor (ex: 'active', 'won', 'lost').")
-
 class WsInputExample(BaseModel):
     client_message: str = Field(..., description="Mensagem de texto enviada pelo usuário.")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "client_message": "Me dê uma dica sobre a tabela periódica?"
+            }
+        }
+    }
 
 class WsOutputStream(BaseModel):
     response_stream: str = Field(..., description="Fragmento de texto (token) da resposta da IA.")

@@ -114,8 +114,11 @@ class GameManager:
         
         game['history'].append({
             "question": question_data['text'],
+            "options": question_data['options'],
+            "correct_option": correct,
+            "explanation": question_data.get('explanation'),
+            "prize": question_data['prize'],
             "selected": selected,
-            "correct": correct,
             "result": "hit" if selected == correct else "miss"
         })
 
@@ -206,25 +209,69 @@ class GameManager:
 
     def init_tutor_context(self, game_id: str):
         """
-        Prepara ou ATUALIZA o contexto do tutor sem duplicar informações.
-        Se já existir histórico, atualiza apenas a mensagem de sistema (index 0).
+        Inclui o histórico detalhado de perguntas respondidas e a pergunta atual (se houver).
         """
         game = self.get_game(game_id)
         if not game: return
 
         status = game['status']
-        history_str = json.dumps(game['history'], ensure_ascii=False)
         persona = self.settings.get("tutor_persona", "Você é um mentor sábio.")
 
+        game_context = []
+
+        for entry in game.get('history', []):
+            game_context.append({
+                "status": "answered",
+                "question": entry.get('question'),
+                "options": entry.get('options'),
+                "user_selected": entry.get('selected'),
+                "correct_option": entry.get('correct_option'),
+                "explanation": entry.get('explanation'),
+                "result": entry.get('result')
+            })
+
+        if status == 'active':
+            if game['mode'] == 'static':
+                questions = self.static_questions
+            else:
+                questions = game['generated_questions']
+            
+            idx = game['current_question_index']
+            if idx < len(questions):
+                q = questions[idx]
+                game_context.append({
+                    "status": "current_active",
+                    "question": q['text'],
+                    "options": q['options'],
+                    "prize": q['prize'],
+                    "correct_option": q['correct_option'],
+                    "explanation": q.get('explanation')
+                })
+
+
+        game_context_str = json.dumps(game_context, ensure_ascii=False, indent=2)
+
         if status == 'lost':
-            context = f"{persona} O jogador PERDEU.\nHistórico: {history_str}\nMissão: Explicar o erro."
+            context = (
+                f"{persona}\n"
+                f"SITUAÇÃO: O jogador PERDEU o jogo.\n"
+                f"CONTEXTO DO JOGO (Respondidas + Atual):\n{game_context_str}\n"
+                "MISSÃO: Explique o erro fatal da última pergunta respondida. Seja didático."
+            )
         elif status == 'won':
-            context = f"{persona} O jogador VENCEU.\nHistórico: {history_str}\nMissão: Parabenizar."
+            context = (
+                f"{persona}\n"
+                f"SITUAÇÃO: O jogador VENCEU o nível.\n"
+                f"CONTEXTO DO JOGO (Respondidas):\n{game_context_str}\n"
+                "MISSÃO: Parabenize o jogador e comente brevemente sobre seu desempenho."
+            )
         else:
             context = (
-                f"{persona} O jogo está em andamento.\n"
-                f"Histórico de jogadas até agora: {history_str}\n"
-                "Missão: Ajude com dúvidas sobre a pergunta atual ou as anteriores."
+                f"{persona}\n"
+                f"SITUAÇÃO: O jogo está em andamento.\n"
+                f"CONTEXTO DO JOGO (Respondidas + Pergunta Atual):\n{game_context_str}\n"
+                "MISSÃO: Ajude o jogador com a pergunta marcada como 'current_active' sem dar a resposta direta. "
+                "Você também pode comentar sobre as perguntas anteriores ('answered') se ele perguntar."
             )
 
         system_message = {"role": "system", "content": context}

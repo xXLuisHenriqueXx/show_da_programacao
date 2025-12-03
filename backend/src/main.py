@@ -97,7 +97,6 @@ async def get_next_question(uuid: str):
     response_model=AnswerResponse, 
     responses={
         200: {"description": "Resposta Correta.", "model": AnswerResponse},
-        406: {"description": "Resposta Errada (Game Over).", "model": AnswerResponse},
         404: {"description": "Jogo não encontrado.", "model": ErrorResponse}
     },
     tags=["Game Flow"],
@@ -122,8 +121,7 @@ async def answer_question(uuid: str, payload: AnswerRequest):
         "game_status": game['status']
     }
     
-    status_code = status.HTTP_200_OK if is_correct else status.HTTP_406_NOT_ACCEPTABLE
-    return JSONResponse(status_code=status_code, content=response_data)
+    return JSONResponse(status_code=200, content=response_data)
 
 @app.post(
     "/next-level/{uuid}", 

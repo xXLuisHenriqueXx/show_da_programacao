@@ -139,6 +139,10 @@ async def answer_question(uuid: str, payload: AnswerRequest):
 async def generate_next_level(uuid: str, background_tasks: BackgroundTasks):
     game = game_manager.get_game(uuid)
     if not game: raise HTTPException(status_code=404, detail="Jogo não encontrado.")
+
+
+    if game['status'] == 'generating':
+        raise HTTPException(status_code=400, detail="Aguarde a geração das novas perguntas para tentar novamente.")
     
     if game['status'] != 'won':
         raise HTTPException(status_code=400, detail="Vença o nível atual primeiro.")

@@ -1,3 +1,5 @@
+import { useEffect, useState, useRef } from "react";
+import { ArrowRight, X } from "lucide-react";
 import {
   Card,
   CardAction,
@@ -6,15 +8,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
 import {
   InputGroup,
   InputGroupButton,
-  InputGroupInput,
+  InputGroupTextarea,
 } from "@/components/ui/input-group";
-import { Separator } from "@/components/ui/separator";
+
 import { useChat } from "@/hooks/useChat";
-import { ArrowRight, X } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { TypingIndicator } from "./TypingIndicator";
 
 interface IChatModalProps {
   uuid: string;
@@ -23,15 +25,15 @@ interface IChatModalProps {
 }
 
 const ChatModal = ({ uuid, show, setShow }: IChatModalProps) => {
-  const { messages, sendMessage, connected, streaming, connect, disconnect } =
+  const { messages, sendMessage, connected, connect, disconnect, typing } =
     useChat(uuid);
 
   const [message, setMessage] = useState("");
-  const chatRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (show) connect();
-    else disconnect();
+    return () => disconnect();
   }, [show, uuid]);
 
   useEffect(() => {
@@ -39,12 +41,18 @@ const ChatModal = ({ uuid, show, setShow }: IChatModalProps) => {
       top: chatRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [messages, streaming]);
+  }, [messages]);
 
   if (!show) return null;
 
+  const handleSend = () => {
+    if (!message.trim()) return;
+    sendMessage(message);
+    setMessage("");
+  };
+
   return (
-    <Card className="absolute bottom-4 right-4 max-w-lg max-h-2/3">
+    <Card className="absolute bottom-4 right-4 w-lg max-h-[70vh] flex flex-col">
       <CardHeader>
         <CardTitle>Tutor Artificial</CardTitle>
         <CardAction onClick={() => setShow(false)}>
@@ -52,53 +60,57 @@ const ChatModal = ({ uuid, show, setShow }: IChatModalProps) => {
         </CardAction>
       </CardHeader>
 
-      <CardContent className="flex flex-col gap-2 overflow-auto">
-        {!connected && <p>Conectando...</p>}
+      <CardContent className="flex-1 overflow-auto">
+        {!connected && (
+          <p className="text-sm text-muted-foreground">Conectando...</p>
+        )}
 
         <div
           ref={chatRef}
-          style={{
-            flex: 1,
-            height: 300,
-            overflowY: "auto",
-            padding: "8px",
-            borderRadius: 8,
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-          }}
+          className="flex flex-col gap-2 overflow-y-auto pr-1 h-full"
         >
           {messages.map((m) => (
             <Card
               key={m.id}
               className={`max-w-3/4 p-2 ${
-                m.role === "user" ? "self-end" : "self-start border-0"
-              } ${m.pending ? "bg-gray-700" : ""}`}
+                m.role === "user"
+                  ? "self-end"
+                  : "self-start border-0 bg-muted/20"
+              }`}
             >
               <CardContent>
                 <p>{m.content}</p>
               </CardContent>
             </Card>
           ))}
+
+          {typing && <TypingIndicator />}
         </div>
       </CardContent>
 
       <CardFooter>
         <InputGroup>
-          <InputGroupInput
-            disabled={!connected}
+          <InputGroupTextarea
+            disabled={!connected || typing}
             value={message}
-            placeholder={streaming ? "Aguarde..." : "Digite sua mensagem..."}
+            placeholder={
+              !connected || typing ? "Aguarde..." : "Digite sua mensagem..."
+            }
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                sendMessage(message);
-                setMessage("");
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
               }
             }}
+            rows={2}
           />
 
-          <InputGroupButton className="p-2 mr-1" disabled={!connected}>
+          <InputGroupButton
+            className="p-2 mr-1"
+            disabled={!connected || typing}
+            onClick={handleSend}
+          >
             <ArrowRight className="w-4 h-4" />
           </InputGroupButton>
         </InputGroup>

@@ -12,6 +12,7 @@ export function useChat(uuid?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState<boolean>(false);
   const [connected, setConnected] = useState<boolean>(false);
+  const [typing, setTyping] = useState<boolean>(false);
 
   const socketRef = useRef<ReturnType<typeof createChatService> | null>(null);
 
@@ -60,6 +61,7 @@ export function useChat(uuid?: string) {
 
     ws.addCallbacks("full_text", (d: any) => {
       setStreaming(false);
+      setTyping(false);
       setMessages((prev) => {
         const last = prev[prev.length - 1];
 
@@ -114,6 +116,8 @@ export function useChat(uuid?: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
 
+    setTyping(true);
+
     // adiciona msg do user local antes de enviar
     setMessages((m) => [
       ...m,
@@ -134,5 +138,6 @@ export function useChat(uuid?: string) {
     streaming,
     connect,
     disconnect,
+    typing,
   };
 }

@@ -126,7 +126,7 @@ const Question = () => {
       >
         <img className="w-24 -mb-4" src={Tutor} alt="Imagem do tutor" />
         <Button className="w-full">
-          <Bot /> Pedir ajuda
+          <Bot /> {"{ Pedir ajuda }"}
         </Button>
       </div>
 

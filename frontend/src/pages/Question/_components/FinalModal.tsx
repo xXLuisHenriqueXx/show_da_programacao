@@ -1,11 +1,14 @@
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
+
 import { Button } from "@/components/ui/button";
 import {
   AnimatedSpan,
   Terminal,
   TypingAnimation,
 } from "@/components/ui/terminal";
+
 import { gameService } from "@/services/Game.service";
-import { useMemo, useState } from "react";
 
 interface IFinalModalProps {
   winner: boolean;
@@ -16,6 +19,8 @@ interface IFinalModalProps {
 
 const FinalModal = ({ winner, uuid, show, setShow }: IFinalModalProps) => {
   const [loading, setLoading] = useState<boolean>(false);
+
+  const navigate = useNavigate();
 
   const onPressReset = async () => {
     setLoading(true);
@@ -32,6 +37,16 @@ const FinalModal = ({ winner, uuid, show, setShow }: IFinalModalProps) => {
       setLoading(false);
     }
   };
+
+  const renderNextLevelButton = useMemo(() => {
+    if (winner) {
+      return (
+        <Button onClick={onPressReset} disabled={loading}>
+          {"{ Proxima fase }"}
+        </Button>
+      );
+    }
+  }, [loading, winner]);
 
   const title = winner
     ? "{ Parabéns, você ganhou! }"
@@ -76,19 +91,21 @@ const FinalModal = ({ winner, uuid, show, setShow }: IFinalModalProps) => {
           </TypingAnimation>
 
           <AnimatedSpan> </AnimatedSpan>
-          <AnimatedSpan> </AnimatedSpan>
-          <AnimatedSpan> </AnimatedSpan>
 
           {renderDescription}
 
           <br />
 
           <div className="flex flex-col gap-2">
+            {renderNextLevelButton}
+
             <Button onClick={onPressReset} disabled={loading}>
-              Recomeçar jogo
+              {"{ Recomeçar jogo }"}
             </Button>
 
-            <Button disabled={loading}>Retornar para tela inicial</Button>
+            <Button onClick={() => navigate("/")} disabled={loading}>
+              {"{ Retornar para tela inicial }"}
+            </Button>
           </div>
         </Terminal>
       </div>

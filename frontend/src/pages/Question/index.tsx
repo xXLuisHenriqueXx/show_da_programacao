@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router";
 import { Bot } from "lucide-react";
 
 import Container from "@/components/Container";
@@ -6,25 +7,84 @@ import { Button } from "@/components/ui/button";
 import { SparklesText } from "@/components/ui/sparkles-text";
 import { Terminal, TypingAnimation } from "@/components/ui/terminal";
 
+import { gameService, type IQuestion } from "@/services/Game.service";
 import Tutor from "@/assets/tutor.png";
 import FinalModal from "./_components/FinalModal";
 import ChatModal from "./_components/ChatModal";
-import { useQuestion } from "./_hooks/useQuestion";
 
 const Question = () => {
-  const {
-    question,
-    winner,
-    loading,
-    fetchQuestion,
-    sendAnswer,
-    formatCurrency,
-    setShowChatModal,
-    setShowFinalModal,
-    uuid,
-    showChatModal,
-    showFinalModal,
-  } = useQuestion();
+  const [question, setQuestion] = useState<IQuestion | null>(null);
+  const [winner, setWinner] = useState<boolean>(false);
+  const [showFinalModal, setShowFinalModal] = useState<boolean>(false);
+  const [showChatModal, setShowChatModal] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const { uuid } = useParams();
+  const navigate = useNavigate();
+
+  const sendAnswer = useCallback(async (option_index: number) => {
+    setLoading(true);
+
+    try {
+      const { status, answer } = await gameService.answerQuestion(
+        uuid!,
+        option_index
+      );
+
+      if (status < 200 || status > 300) {
+        navigate("/");
+        return;
+      }
+
+      if (!answer?.correct) {
+        setWinner(false);
+        setShowFinalModal(true);
+      }
+
+      fetchQuestion();
+    } catch (error) {
+      alert(error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchQuestion = async () => {
+    setLoading(true);
+
+    try {
+      const { status, question } = await gameService.getNextQuestion(uuid!);
+
+      if (status < 200 || status > 300) navigate("/");
+
+      if (status === 201) {
+        console.log("entrou aqui");
+        setWinner(true);
+        setShowFinalModal(true);
+
+        return;
+      }
+
+      setQuestion(question ?? null);
+    } catch (error) {
+      alert(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchQuestion();
+  }, [showFinalModal]);
+
+  if (!uuid) navigate("/");
+
+  const formatCurrency = (value: number) => {
+    return value?.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+  };
 
   const title = useMemo(() => {
     if (question) return `PS C:\System32> ${question.text}`;

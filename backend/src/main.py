@@ -18,7 +18,7 @@ tags_metadata = [
 
 app = FastAPI(
     title="Jogo do Milhão AI", 
-    version="2.10.0", 
+    version="2.11.0", 
     description="API para Quiz Game com suporte a IA Generativa e Tutoria em Tempo Real.",
     openapi_tags=tags_metadata
 )
@@ -97,6 +97,7 @@ async def get_next_question(uuid: str):
     response_model=AnswerResponse, 
     responses={
         200: {"description": "Resposta Correta.", "model": AnswerResponse},
+        406: {"description": "Resposta Errada (Game Over).", "model": AnswerResponse},
         404: {"description": "Jogo não encontrado.", "model": ErrorResponse}
     },
     tags=["Game Flow"],
@@ -166,13 +167,6 @@ async def check_generation_status(uuid: str):
 async def get_websocket_protocol(uuid: str):
     return {
         "url": f"ws://SEU_HOST:8000/ws/chat/{uuid}",
-        "protocol": "JSON-Only",
-        "client_sends": {"client_message": "Texto do usuário"},
-        "server_sends_history": {"type": "history", "content": []},
-        "server_sends_stream": {"response_stream": "..."},
-        "server_sends_control": {"type": "control", "content": "[DONE]"},
-        "server_sends_redundancy": {"type": "full_text", "content": "..."},
-        "possible_errors": {"type": "error", "content": "..."}
     }
 
 @app.websocket("/ws/chat/{uuid}")
@@ -208,7 +202,7 @@ async def websocket_endpoint(websocket: WebSocket, uuid: str):
             
             full_response = ""
             
-            for chunk in ai_client.get_streaming_response(
+            async for chunk in ai_client.get_streaming_response(
                 messages=game['chat_history'], 
                 vector_store_id=vector_id
             ):

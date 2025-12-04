@@ -3,6 +3,7 @@
     "game_title": "Jogo do Milhão Python",
     "currency_symbol": "R$",
     "tutor_persona": "Você é um apresentador de TV carismático e sábio. Ajude o jogador a ganhar, mas nunca dê a resposta direta.",
+    "tutor_initial_message": "Olá! Sou seu assistente virtual. Se tiver dúvidas, é só perguntar!",
     "tutor_question_generations_instructions": "",
     "welcome_message": "Bem-vindo ao desafio! Preparado para ganhar 1 milhão?",
     "timeout_seconds": 60,

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generator, Optional
+from typing import AsyncGenerator, Optional
 
 class LLMClientInterface(ABC):
     @abstractmethod
@@ -7,16 +7,16 @@ class LLMClientInterface(ABC):
         self, 
         messages: list, 
         vector_store_id: Optional[str] = None
-    ) -> Generator[str, None, None]:
-        """Chat via streaming síncrono (yield)."""
+    ) -> AsyncGenerator[str, None]:
+        """Chat via streaming assíncrono (yield)."""
         pass
 
     @abstractmethod
-    def generate_structured_content(
+    async def generate_structured_content(
         self, 
         system_prompt: str, 
         user_prompt: str,
         vector_store_id: Optional[str] = None
     ) -> str:
-        """Gera conteúdo estruturado (JSON) de forma síncrona."""
+        """Gera conteúdo estruturado (JSON) de forma assíncrona."""
         pass

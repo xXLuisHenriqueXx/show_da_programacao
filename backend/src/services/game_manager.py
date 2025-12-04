@@ -36,20 +36,16 @@ class GameManager:
         game = self.get_game(game_id)
         if not game: return False
 
-        # Reinicia estado do jogo
         game['current_question_index'] = 0
         game['accumulated_prize'] = 0
         game['status'] = 'active'
         game['history'] = [] 
         
-        # Limpa o chat explicitamente (já que é um reset total)
         game['chat_history'] = []
         
-        # Inicializa com o novo contexto
         self.init_tutor_context(game_id)
         
-        # Adiciona aviso de reset
-        retry_context = "SISTEMA: O jogador optou por REINICIAR (Reset) este nível. Ele está tentando novamente as mesmas perguntas. Seja encorajador e considere que ele pode já ter visto essas questões antes."
+        retry_context = "SISTEMA: O jogador optou por REINICIAR (Reset) este nível. Ele está tentando novamente as mesmas perguntas."
         game['chat_history'].append({"role": "system", "content": retry_context})
         
         return True
@@ -130,7 +126,7 @@ class GameManager:
             game['status'] = 'lost'
             return False
 
-    def background_generate_level(self, game_id: str, ai_client: LLMClientInterface):
+    async def background_generate_level(self, game_id: str, ai_client: LLMClientInterface):
         game = self.get_game(game_id)
         if not game: return
 
@@ -175,7 +171,7 @@ class GameManager:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                json_str = ai_client.generate_structured_content(
+                json_str = await ai_client.generate_structured_content(
                     system_prompt=system_prompt,
                     user_prompt=f"Gere o próximo nível com {qty_questions} questões (Tentativa {attempt+1}).",
                     vector_store_id=self.vector_store_id
@@ -208,14 +204,13 @@ class GameManager:
                     game['generation_status'] = 'error'
 
     def init_tutor_context(self, game_id: str):
-        """
-        Inclui o histórico detalhado de perguntas respondidas e a pergunta atual (se houver).
-        """
         game = self.get_game(game_id)
         if not game: return
 
         status = game['status']
         persona = self.settings.get("tutor_persona", "Você é um mentor sábio.")
+        
+        initial_msg_content = self.settings.get("tutor_initial_message", "Olá! Como posso ajudar?")
 
         game_context = []
 
@@ -248,7 +243,6 @@ class GameManager:
                     "explanation": q.get('explanation')
                 })
 
-
         game_context_str = json.dumps(game_context, ensure_ascii=False, indent=2)
 
         if status == 'lost':
@@ -270,15 +264,17 @@ class GameManager:
                 f"{persona}\n"
                 f"SITUAÇÃO: O jogo está em andamento.\n"
                 f"CONTEXTO DO JOGO (Respondidas + Pergunta Atual):\n{game_context_str}\n"
-                "MISSÃO: Ajude o jogador com a pergunta marcada como 'current_active' sem dar a resposta direta. "
-                "Você também pode comentar sobre as perguntas anteriores ('answered') se ele perguntar."
+                "MISSÃO: Ajude o jogador com a pergunta marcada como 'current_active' sem dar a resposta direta."
             )
 
         system_message = {"role": "system", "content": context}
+        welcome_message = {"role": "assistant", "content": initial_msg_content}
 
+        # Se o histórico estiver vazio, inicializa com System + Welcome
         if not game['chat_history']:
-            game['chat_history'] = [system_message]
+            game['chat_history'] = [system_message, welcome_message]
         else:
+            # Se já existir, apenas atualiza o System prompt (index 0) com o estado novo
             if game['chat_history'][0]['role'] == 'system':
                 game['chat_history'][0] = system_message
             else:

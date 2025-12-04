@@ -15,9 +15,16 @@ interface IFinalModalProps {
   uuid: string;
   show: boolean;
   setShow: (show: boolean) => void;
+  fetchQuestion: () => Promise<void>;
 }
 
-const FinalModal = ({ winner, uuid, show, setShow }: IFinalModalProps) => {
+const FinalModal = ({
+  winner,
+  uuid,
+  show,
+  setShow,
+  fetchQuestion,
+}: IFinalModalProps) => {
   const [loading, setLoading] = useState<boolean>(false);
 
   const navigate = useNavigate();
@@ -38,10 +45,48 @@ const FinalModal = ({ winner, uuid, show, setShow }: IFinalModalProps) => {
     }
   };
 
+  const loopNextLevelStatus = async () => {
+    try {
+      const { status, game_status } = await gameService.nextLevelStatus(uuid!);
+      console.log(game_status);
+
+      if (status !== 200) return;
+
+      if (game_status === "completed") {
+        setShow(false);
+        return;
+      }
+
+      setTimeout(loopNextLevelStatus, 1000);
+    } catch (error) {
+      alert(error);
+    }
+  };
+
+  const onPressNextLevel = async () => {
+    setLoading(true);
+
+    try {
+      const { status } = await gameService.nextLevel(uuid!);
+      console.log(status);
+
+      if (status !== 202) return;
+
+      loopNextLevelStatus();
+
+      setShow(false);
+      fetchQuestion();
+    } catch (error) {
+      alert(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderNextLevelButton = useMemo(() => {
     if (winner) {
       return (
-        <Button onClick={onPressReset} disabled={loading}>
+        <Button onClick={onPressNextLevel} disabled={loading}>
           {"{ Proxima fase }"}
         </Button>
       );

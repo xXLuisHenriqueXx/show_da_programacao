@@ -135,6 +135,7 @@ const Question = () => {
         uuid={uuid!}
         show={showFinalModal}
         setShow={setShowFinalModal}
+        fetchQuestion={fetchQuestion}
       />
 
       <ChatModal uuid={uuid!} show={showChatModal} setShow={setShowChatModal} />

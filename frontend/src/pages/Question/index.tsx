@@ -103,7 +103,9 @@ const Question = () => {
       <SparklesText>{value}</SparklesText>
 
       <Terminal className="h-auto">
-        <TypingAnimation>{title}</TypingAnimation>
+        <TypingAnimation className="text-primary/75 text-wrap" duration={5}>
+          {title}
+        </TypingAnimation>
 
         <br />
 

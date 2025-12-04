@@ -52,7 +52,7 @@ const ChatModal = ({ uuid, show, setShow }: IChatModalProps) => {
   };
 
   return (
-    <Card className="absolute bottom-4 right-4 w-lg max-h-[70vh] flex flex-col">
+    <Card className="absolute bottom-4 right-4 w-2xl h-4/5 flex flex-col">
       <CardHeader>
         <CardTitle>Tutor Artificial</CardTitle>
         <CardAction onClick={() => setShow(false)}>
@@ -72,7 +72,7 @@ const ChatModal = ({ uuid, show, setShow }: IChatModalProps) => {
           {messages.map((m) => (
             <Card
               key={m.id}
-              className={`max-w-3/4 p-2 ${
+              className={`max-w-4/5 p-2 ${
                 m.role === "user"
                   ? "self-end"
                   : "self-start border-0 bg-muted/20"

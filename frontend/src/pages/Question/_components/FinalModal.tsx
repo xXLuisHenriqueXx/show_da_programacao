@@ -74,7 +74,6 @@ const FinalModal = ({
 
       loopNextLevelStatus();
 
-      setShow(false);
       fetchQuestion();
     } catch (error) {
       alert(error);
@@ -131,7 +130,10 @@ const FinalModal = ({
     show && (
       <div className="fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/75 bg-opacity-50 z-50">
         <Terminal className="h-auto">
-          <TypingAnimation className="text-2xl font-bold text-center">
+          <TypingAnimation
+            className="text-2xl font-bold text-center"
+            duration={5}
+          >
             {title}
           </TypingAnimation>
 

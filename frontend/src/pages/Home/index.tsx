@@ -25,7 +25,7 @@ function Home() {
       <SparklesText>&#123; Show da Programação &#125;</SparklesText>
 
       <Terminal className="h-auto">
-        <TypingAnimation className="text-primary/75">
+        <TypingAnimation className="text-primary/75" duration={5}>
           PS C:\System32&gt; Se desafie respondendo perguntas sobre:
         </TypingAnimation>
         <AnimatedSpan className="text-green-300">
@@ -40,7 +40,7 @@ function Home() {
         <AnimatedSpan className="text-green-300">
           echo "Arquitetura"
         </AnimatedSpan>
-        <TypingAnimation className="text-primary/75 text-wrap">
+        <TypingAnimation className="text-primary/75 text-wrap" duration={5}>
           PS C:\System32&gt; Afim de melhorar a qualidade do seu código e
           aprendizado!
         </TypingAnimation>

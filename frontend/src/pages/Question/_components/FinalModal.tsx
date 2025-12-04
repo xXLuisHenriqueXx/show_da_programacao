@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Button } from "@/components/ui/button";
@@ -29,21 +29,22 @@ const FinalModal = ({
 
   const navigate = useNavigate();
 
-  const onPressReset = async () => {
+  const onPressReset = useCallback(async () => {
     setLoading(true);
 
     try {
       const { status } = await gameService.reset(uuid!);
 
-      if (status !== 200) return;
+      if (status !== 202) return;
 
+      loopNextLevelStatus();
       setShow(false);
     } catch (error) {
       alert(error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [uuid, setShow]);
 
   const loopNextLevelStatus = async () => {
     try {

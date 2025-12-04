@@ -34,7 +34,7 @@ const ChatModal = ({ uuid, show, setShow }: IChatModalProps) => {
   useEffect(() => {
     if (show) connect();
     return () => disconnect();
-  }, [show, uuid]);
+  }, [show]);
 
   useEffect(() => {
     chatRef.current?.scrollTo({

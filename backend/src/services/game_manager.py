@@ -32,20 +32,22 @@ class GameManager:
         return self.games.get(game_id)
 
     def reset_game(self, game_id: str) -> bool:
-        """Reinicia o nível atual mantendo as perguntas mas zerando o progresso."""
         game = self.get_game(game_id)
         if not game: return False
 
         game['current_question_index'] = 0
         game['accumulated_prize'] = 0
         game['status'] = 'active'
-        game['history'] = [] 
         
-        game['chat_history'] = []
+        game['history'] = [] 
         
         self.init_tutor_context(game_id)
         
-        retry_context = "SISTEMA: O jogador optou por REINICIAR (Reset) este nível. Ele está tentando novamente as mesmas perguntas."
+        retry_context = (
+            "SISTEMA: O jogador optou por REINICIAR (Reset) este nível. "
+            "O progresso dele foi zerado, mas ele está enfrentando as mesmas perguntas. "
+            "Seja encorajador, mas não dê a resposta mesmo que ele já tenha visto."
+        )
         game['chat_history'].append({"role": "system", "content": retry_context})
         
         return True
@@ -154,8 +156,8 @@ class GameManager:
             "3. Se houve acertos fáceis, aumente a dificuldade.\n"
             "4. Retorne APENAS JSON válido.\n\n"
             "5. Faça questões com 4 alternativas. Nem mais nem menos.\n\n"
-            "6. O prêmio deve subir conforme a quantidade de perguntas for aumentando e a dificuldade também deve aumentar progressivamente.\n\n"
-            "6. Correct option é a cópia de um dos elementos do array de alternativas. Se a alternativa A é a correta, o correct_option deve ser Alternativa A\n\n"
+            "6. O prêmio e a dificuldade das perguntas devem subir progressivamente, observe o histórico anterior e se baseie nele para isso.\n\n"
+            "6. Correct option é a cópia da alternativa correta. Exemplo: Qual o elemento elemnto químico que respiramos? options: [oxigenio, nitrogenio, hélio, gás carbônico], correct_option: oxigenio\n\n"
             "FORMATO JSON OBRIGATÓRIO:\n"
             "{\n"
             "  \"questions\": [\n"
@@ -212,11 +214,9 @@ class GameManager:
 
         status = game['status']
         persona = self.settings.get("tutor_persona", "Você é um mentor sábio.")
-        
         initial_msg_content = self.settings.get("tutor_initial_message", "Olá! Como posso ajudar?")
 
         game_context = []
-
         for entry in game.get('history', []):
             game_context.append({
                 "status": "answered",
@@ -273,11 +273,9 @@ class GameManager:
         system_message = {"role": "system", "content": context}
         welcome_message = {"role": "assistant", "content": initial_msg_content}
 
-        # Se o histórico estiver vazio, inicializa com System + Welcome
         if not game['chat_history']:
             game['chat_history'] = [system_message, welcome_message]
         else:
-            # Se já existir, apenas atualiza o System prompt (index 0) com o estado novo
             if game['chat_history'][0]['role'] == 'system':
                 game['chat_history'][0] = system_message
             else:

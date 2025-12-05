@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -53,6 +54,7 @@ const FinalModal = ({
       if (status !== 200) return;
 
       if (game_status === "completed") {
+        setLoading(false);
         setShow(false);
         return;
       }
@@ -77,8 +79,6 @@ const FinalModal = ({
       fetchQuestion();
     } catch (error) {
       alert(error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -86,7 +86,7 @@ const FinalModal = ({
     if (winner) {
       return (
         <Button onClick={onPressNextLevel} disabled={loading}>
-          {"{ Proxima fase }"}
+          {loading ? <Loader2 className="animate-spin" /> : "{ Proxima fase }"}
         </Button>
       );
     }

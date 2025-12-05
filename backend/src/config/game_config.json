@@ -17,5 +17,78 @@
       "correct_option": "Abstract Factory",
       "explanation": "O Abstract Factory fornece uma interface para criar famílias de objetos relacionados ou dependentes sem especificar suas classes concretas, garantindo que os produtos criados sejam compatíveis entre si.",
       "prize": 1000
-    }]
+    },
+    {
+      "id": 2,
+      "text": "Seu sistema precisa construir um objeto complexo passo a passo (ex: um documento HTML ou uma refeição com vários itens opcionais), separando a construção da sua representação. Qual padrão é ideal?",
+      "options": ["Builder", "Adapter", "Decorator", "Strategy"],
+      "correct_option": "Builder",
+      "explanation": "O Builder separa a construção de um objeto complexo da sua representação, permitindo que o mesmo processo de construção crie diferentes representações.",
+      "prize": 2000
+    },
+    {
+      "id": 3,
+      "text": "Você tem uma classe antiga (Legado) com uma interface incompatível com o novo sistema que espera uma interface específica (Alvo). Qual padrão atua como um tradutor entre elas?",
+      "options": ["Bridge", "Adapter", "Proxy", "Facade"],
+      "correct_option": "Adapter",
+      "explanation": "O Adapter converte a interface de uma classe em outra interface esperada pelos clientes. Ele permite que classes com interfaces incompatíveis trabalhem juntas.",
+      "prize": 3000
+    },
+    {
+      "id": 4,
+      "text": "Você precisa representar hierarquias 'todo-parte' (como arquivos e pastas, ou elementos gráficos agrupados) para que os clientes tratem objetos individuais e composições de maneira uniforme. Qual padrão usar?",
+      "options": ["Composite", "Iterator", "Chain of Responsibility", "State"],
+      "correct_option": "Composite",
+      "explanation": "O Composite compõe objetos em estruturas de árvore para representar hierarquias todo-parte. Permite que clientes tratem objetos individuais e composições de objetos de maneira uniforme.",
+      "prize": 4000
+    },
+    {
+      "id": 5,
+      "text": "Para evitar a explosão de subclasses ao adicionar responsabilidades a um objeto (ex: adicionar borda, scroll e sombra a uma Janela), qual padrão permite 'embrulhar' o objeto original dinamicamente?",
+      "options": ["Flyweight", "Decorator", "Template Method", "Observer"],
+      "correct_option": "Decorator",
+      "explanation": "O Decorator anexa responsabilidades adicionais a um objeto dinamicamente. Oferece uma alternativa flexível ao uso de herança para estender funcionalidades.",
+      "prize": 5000
+    },
+    {
+      "id": 6,
+      "text": "Seu sistema interage com uma biblioteca complexa cheia de classes e dependências. Você quer fornecer uma interface simplificada e unificada para facilitar o uso. Qual padrão estrutural aplicar?",
+      "options": ["Facade", "Mediator", "Adapter", "Singleton"],
+      "correct_option": "Facade",
+      "explanation": "O Facade fornece uma interface unificada para um conjunto de interfaces em um subsistema. Define uma interface de alto nível que torna o subsistema mais fácil de usar.",
+      "prize": 10000
+    },
+    {
+      "id": 7,
+      "text": "Você precisa controlar o acesso a um objeto, seja porque ele é remoto, caro para criar (pesado) ou exige segurança. Qual padrão cria um substituto para esse objeto real?",
+      "options": ["Proxy", "Composite", "Command", "Observer"],
+      "correct_option": "Proxy",
+      "explanation": "O Proxy provê um substituto ou ponto através do qual um objeto pode controlar o acesso a outro. Exemplos incluem Proxy Remoto, Virtual e de Proteção.",
+      "prize": 20000
+    },
+    {
+      "id": 8,
+      "text": "Você identifica um método que parece estar mais interessado nos dados de outra classe do que nos da própria classe onde ele está. Martin Fowler chama esse 'mau cheiro' de:",
+      "options": ["Feature Envy", "Shotgun Surgery", "Middle Man", "Data Clumps"],
+      "correct_option": "Feature Envy",
+      "explanation": "Feature Envy (Inveja da Funcionalidade) ocorre quando um método acessa mais dados de outro objeto do que do seu próprio. A solução geralmente é mover o método para a classe que possui os dados.",
+      "prize": 50000
+    },
+    {
+      "id": 9,
+      "text": "No seu código, você vê chamadas encadeadas como 'cliente.getEndereco().getCidade().getCodigo()'. Isso viola o encapsulamento e cria acoplamento. Qual é o nome desse Code Smell?",
+      "options": ["Message Chains", "Lazy Class", "Switch Statements", "Divergent Change"],
+      "correct_option": "Message Chains",
+      "explanation": "Message Chains (Corrente de Mensagens) ocorrem quando um cliente navega pela estrutura de objetos. Qualquer mudança na estrutura intermediária afeta o cliente. A solução pode ser 'Hide Delegate'.",
+      "prize": 100000
+    },
+    {
+      "id": 10,
+      "text": "Você tem um 'Método Longo' cheio de comentários explicando o que cada bloco faz. Qual é a técnica de refatoração primária para quebrar esse método em partes menores e autoexplicativas?",
+      "options": ["Extract Method", "Inline Method", "Pull Up Method", "Replace Temp with Query"],
+      "correct_option": "Extract Method",
+      "explanation": "Extract Method é a técnica de criar um novo método e mover um fragmento de código para ele, substituindo o fragmento original por uma chamada. O nome do método deve explicar 'o que' ele faz.",
+      "prize": 500000
+    }
+  ]
 }
